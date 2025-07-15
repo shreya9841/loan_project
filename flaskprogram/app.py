@@ -1,23 +1,22 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, redirect, url_for, session
 import pickle
 import numpy as np
-import pandas as pd
-from model import TreeNode, DecisionTree, RandomForest
+import sqlite3
+from werkzeug.security import generate_password_hash, check_password_hash
+from model import TreeNode, DecisionTree, RandomForest  # your custom model
 
 app = Flask(__name__)
+app.secret_key = "your_secret_key_here"
 
-# Load your saved model AND feature names
+# Load ML model
 with open("loan_model.pkl", "rb") as f:
     model = pickle.load(f)
 
-# CRITICAL: Load the feature names to ensure correct order
+# Load feature names
 with open("features.pkl", "rb") as f:
     feature_names = pickle.load(f)
 
-print("Expected feature order:", feature_names)
-print("Number of features expected:", len(feature_names))
-
-# Encoding maps - make sure these match your training data
+# Encoding maps
 gender_map = {"Male": 1, "Female": 0}
 married_map = {"Yes": 1, "No": 0}
 dependents_map = {"0": 0, "1": 1, "2": 2, "3+": 3}
@@ -25,12 +24,63 @@ education_map = {"Graduate": 1, "Not Graduate": 0}
 self_employed_map = {"Yes": 1, "No": 0}
 property_area_map = {"Urban": 2, "Semiurban": 1, "Rural": 0}
 
+# Home
 @app.route("/")
 def index():
     return render_template("index.html")
 
+# Sign up
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        hashed_pw = generate_password_hash(password)
+
+        conn = sqlite3.connect("users.db")
+        c = conn.cursor()
+        try:
+            c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_pw))
+            conn.commit()
+            return redirect(url_for("login"))
+        except sqlite3.IntegrityError:
+            return render_template("signup.html", error="Username already exists.")
+        finally:
+            conn.close()
+    return render_template("signup.html")
+
+# Login
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        conn = sqlite3.connect("users.db")
+        c = conn.cursor()
+        c.execute("SELECT * FROM users WHERE username = ?", (username,))
+        user = c.fetchone()
+        conn.close()
+
+        if user and check_password_hash(user[2], password):
+            session['user'] = username
+            return redirect(url_for("index"))
+        else:
+            return render_template("login.html", error="Invalid username or password.")
+    return render_template("login.html")
+
+# Logout
+@app.route("/logout")
+def logout():
+    session.pop("user", None)
+    return redirect(url_for("index"))
+
+# Loan prediction
 @app.route("/predict", methods=["GET", "POST"])
 def predict():
+    if "user" not in session:
+        return redirect(url_for("login"))
+
     if request.method == "POST":
         try:
             # Get form data
@@ -46,7 +96,7 @@ def predict():
             credit_history = float(request.form.get("Credit_History"))
             property_area = request.form.get("Property_Area")
 
-            # Encode categorical features
+            # Encode inputs
             gender_enc = gender_map.get(gender, 0)
             married_enc = married_map.get(married, 0)
             dependents_enc = dependents_map.get(dependents, 0)
@@ -54,7 +104,6 @@ def predict():
             self_employed_enc = self_employed_map.get(self_employed, 0)
             property_area_enc = property_area_map.get(property_area, 0)
 
-            # Create a dictionary with all features
             input_dict = {
                 'Gender': gender_enc,
                 'Married': married_enc,
@@ -69,26 +118,16 @@ def predict():
                 'Property_Area': property_area_enc
             }
 
-            # CRITICAL: Build input array in the EXACT order from training
             input_data = np.array([[input_dict[feature] for feature in feature_names]])
-            
-            print("Input data shape:", input_data.shape)
-            print("Input data:", input_data)
 
-            # Predict
             prediction = model.predict(input_data)[0]
-            print("Raw prediction:", prediction)
-            
-            # Convert prediction to label
-            # Check what your actual labels were during training
             pred_label = "Y" if prediction == 1 else "N"
 
-            return render_template("form.html", prediction=pred_label, 
-                                 input_data=input_data.tolist(), 
-                                 raw_prediction=prediction)
+            return render_template("form.html", prediction=pred_label,
+                                   input_data=input_data.tolist(),
+                                   raw_prediction=prediction)
 
         except Exception as e:
-            print("Error:", str(e))
             return render_template("form.html", error=str(e))
 
     return render_template("form.html")
