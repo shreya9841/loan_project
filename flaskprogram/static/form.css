@@ -445,3 +445,9 @@ select {
 #login-logout-link:hover {
   background-color: #764ba2;
 }
+
+.logo-img {
+  height: 30px; /* adjust size as needed */
+  margin-right: 8px;
+  vertical-align: middle;
+}

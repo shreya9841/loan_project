@@ -5,29 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Loan Approval Prediction System</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}" />
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+
   
 </head>
 <body>
   <!-- Navigation -->
   <nav class="navbar">
-    <div class="nav-container">
-      <a href="#home" class="logo">LoanPredict</a>
-      <ul class="nav-links">
-        <li><a href="#home">Home</a></li>
-        <li><a href="#info">Info</a></li>
-        <li><a href="#bank">Bank</a></li>
-        <!-- Use active predict link -->
-        <!-- <li><a href="{{ url_for('predict') }}">Predict</a></li> -->
-         <li><a href="#predict">Predict</a></li>
-        <li><a href="#contact">Contact</a></li>
-        {% if session.get('user') %}
-          <li><a href="/logout" id="login-logout-link">Logout</a></li>
-        {% else %}
-          <li><a href="/login" id="login-logout-link">Login</a></li>
-        {% endif %}
-      </ul>
-    </div>
-  </nav>
+  <div class="nav-container">
+    <a href="#home" class="logo">
+      <!-- <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-img"> -->
+      LoanPredict
+    </a>
+    <ul class="nav-links">
+      <li><a href="#home">Home</a></li>
+      <li><a href="#info">Info</a></li>
+      <li><a href="#bank">Bank</a></li>
+      <li><a href="#predict">Predict</a></li>
+      <li><a href="#contact">Contact</a></li>
+      {% if session.get('user') %}
+        <li><a href="/logout" id="login-logout-link">Logout</a></li>
+      {% else %}
+        <li><a href="/login" id="login-logout-link">Login</a></li>
+      {% endif %}
+    </ul>
+  </div>
+</nav>
+
 
   <!-- Hero Section -->
   <section id="home" class="hero">
